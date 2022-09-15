@@ -1,0 +1,59 @@
+$ npm install -g hexo-cli
+
+
+
+
+
+打开package.json, 修改 dependencies 项：
+
+    "hexo": "^5.0.0",
+更新
+npm update
+
+
+升级
+1、全局升级hexo-cli，先hexo version查看当前版本，然后npm i hexo-cli -g，再次hexo version查看是否升级成功。
+
+2、使用npm install -g npm-check和npm-check，检查系统中的插件是否有升级的，可以看到自己前面都安装了那些插件
+
+3、使用npm install -g npm-upgrade和npm-upgrade，升级系统中的插件
+
+4、使用npm update -g和npm update --save
+
+
+今天升级了hexo到5.0，同时也把next theme升级到了8.0正式版。刚升级完成时，突然发现next theme提供的文章访问次数功能不正常了，仔细琢磨了一通，发现是hexo 5.0处理permanlink的方式发生了改变，所以简单记录一下，或许也能够帮到其他人。
+
+问题
+刚升级完hexo和next版本之后，我在本地使用hexo s命令预览，突然发现看不到文章的访问次数了，我之前关闭了next theme配置里leancloud的security功能，理论上在本地应该也是能看到文章的访问次数的，所以就很奇怪，拿升级之前的版本在本地预览，确实也是正常的。
+
+排查过程
+首先重新初始化了纯净的hexo版本，从git clone了正式的next 8.0，然后比对着新旧配置文件，将旧版配置迁移了过来，随后将之前post拷贝到新文件夹，问题依旧。
+正处于百思不得其解之时，我无意点了一下自己的post链接，竟然发现没有打开链接，而是调用起了浏览器的下载功能。
+这下更懵圈了，我以为是next正式版主题的问题，但随后回退next到8.0的几个rc版，问题依旧。
+此时我又重新初始化hexo和next，点开hexo初始化后的helloworld文档链接，发现能正常打开，然后复制我自己的post过来，依旧是调用下载功能。
+随后去某个hexo的telegram群搜索了一下下载，看到另外一个人也提到了这个问题，后面他自己又说解决了，涉及到permalink，但是没有更具体的介绍了；然后我在hexo github的issue里搜到另外一个人提到说hexo给他的post链接后面有的加了/，有的没有加，导致现在出现了问题。
+综合上面两条信息，我直觉判断可能是这个permalink的问题。随后我将我post里front-matter区域的permalink参数去掉，发现的确能正常打开了。紧接着我尝试性的在post中的permalink参数后面加了/，然后发现能正常打开链接了！
+新问题
+但此时发现一个更大的问题，就是我post的永久链接与之前对应不上了！我本来将post的永久链接设置成year-month-permalink格式，其中year与month都是文章初次生成的时间，permalink是我在文章front-matter处手动指定的，之前一直都运作得很正常，但现在升级之后我post的链接变成了仅有permalink，而year和month部分都不见了。然后我猜想文章访问次数消失应该也是由链接变更引起的。
+
+回顾hexo站点配置，之前我是这样配置permalink的：
+
+permalink: :year/:month/:title/
+然后我会在每个post的front_matter区域手动指定
+
+permalink: xxxx
+随后文章的永久链接就会自动变为：
+
+https://tang.su/year/month/xxxx/
+但是现在的问题是永久链接丢掉了year和month，即变成了
+
+https://tang.su/xxxx/
+问题找到了！即hexo 5.0处理permalink的方式变了！如果在post的front-matter指定了permalink，就会忽略掉站点配置里的permalink参数！
+
+解决
+也不知道哪里来的灵感，我突然想着将post front-matter处的permalink改成了mylink，然后将站点配置_config.yml里的permalink配置改为了permalink: :year/:month/:mylink/，再尝试一下，发现一切都正常了！
+
+所以最后的解决方案变为，将post里front-matter中所有的permalink关键字改为mylink（其实改为任何你想要的名字都行），然后这里不用加/，然后将站点配置里的permalink配置改为:year/:month/:mylink/（这里最右边加上/），一切就又都回到了和之前一样完美工作的状态。
+
+由于post链接恢复了正常，此时我发现文章访问次数的统计也正常了。随后便hexo g -d重新部署，万事大吉~
+
